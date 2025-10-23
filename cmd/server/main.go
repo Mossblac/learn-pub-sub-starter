@@ -3,19 +3,14 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
-	"os/signal"
-	"syscall"
 
+	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/routing"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 func main() {
-	sigs := make(chan os.Signal, 1)
-
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
 	connectionString := "amqp://guest:guest@localhost:5672/"
 	con, err := amqp.Dial(connectionString)
@@ -23,22 +18,51 @@ func main() {
 		log.Fatalf("Failed to connect to RabbitMQ: %v", err)
 	}
 
-	RabChan, err := con.Channel() // have to create function for *amqp.Channel before it will save.
+	RabChan, err := con.Channel()
 	if err != nil {
 		fmt.Printf("Error with RabChan: %v", err)
-	}
-
-	err = pubsub.PublishJSON(RabChan, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{IsPaused: true})
-	if err != nil {
-		fmt.Printf("Error with PublishJSON: %v", err)
 	}
 
 	defer con.Close()
 	fmt.Println("Connected to RabbitMQ")
 	fmt.Println("Starting Peril server...")
+	gamelogic.PrintServerHelp()
 
-	<-sigs
-	fmt.Printf("\nShutting Down RabbitMQ connection\n Ending Program...\n")
-	con.Close()
+	_, queue, err := pubsub.DeclareAndBind(
+		con,
+		routing.ExchangePerilTopic,
+		routing.GameLogSlug,
+		"game_logs.*",
+		pubsub.SimpleQueueDurable,
+	)
+	if err != nil {
+		log.Fatalf("could not subscribe to topic: %v", err)
+	}
+	fmt.Printf("Queue %v declared and bound!\n", queue.Name)
 
+	for {
+		input := gamelogic.GetInput()
+		switch input[0] {
+		case "pause":
+			fmt.Println("sending pause message")
+			err = pubsub.PublishJSON(RabChan, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{IsPaused: true})
+			if err != nil {
+				fmt.Printf("Error with PublishJSON: %v", err)
+			}
+		case "resume":
+			fmt.Println("sending resume message")
+			err = pubsub.PublishJSON(RabChan, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{IsPaused: false})
+			if err != nil {
+				fmt.Printf("Error with PublishJSON: %v", err)
+			}
+		case "quit":
+
+			fmt.Printf("\nShutting Down RabbitMQ connection\n Ending Program...\n")
+			con.Close()
+			return
+		default:
+			fmt.Println("unknown command")
+		}
+
+	}
 }

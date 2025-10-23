@@ -3,9 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
@@ -14,9 +11,6 @@ import (
 )
 
 func main() {
-	sigs := make(chan os.Signal, 1)
-
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
 	connectionString := "amqp://guest:guest@localhost:5672/"
 	conn, err := amqp.Dial(connectionString)
@@ -45,8 +39,34 @@ func main() {
 	fmt.Println("Connected to RabbitMQ")
 	fmt.Println("Starting Peril server...")
 
-	<-sigs
-	fmt.Printf("\nShutting Down RabbitMQ connection\n Ending Program...\n")
-	conn.Close()
+	gamestate := gamelogic.NewGameState(username)
 
+	for {
+		words := gamelogic.GetInput()
+		switch words[0] {
+		case "spawn":
+			err := gamestate.CommandSpawn(words)
+			if err != nil {
+				fmt.Printf("unable to spawn unit: %v", err)
+			}
+		case "move":
+			_, err := gamestate.CommandMove(words)
+			if err != nil {
+				fmt.Printf("unable to move unit: %v", err)
+			}
+		case "status":
+			gamestate.CommandStatus()
+		case "help":
+			gamelogic.PrintClientHelp()
+		case "spam":
+			fmt.Println("Spamming not allowed yet")
+		case "quit":
+			gamelogic.PrintQuit()
+			fmt.Printf("\nShutting Down RabbitMQ connection\n Ending Program...\n")
+			conn.Close()
+			return
+		default:
+			fmt.Println("Unkown Command")
+		}
+	}
 }
