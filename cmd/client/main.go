@@ -35,11 +35,41 @@ func main() {
 	}
 	fmt.Printf("Queue %v declared and bound!\n", queue.Name)
 
+	MoveChannel, Movequeue, err := pubsub.DeclareAndBind(
+		conn,
+		routing.ExchangePerilTopic,
+		"army_moves."+username,
+		"army_moves.*",
+		pubsub.SimpleQueueTransient,
+	)
+	if err != nil {
+		log.Fatalf("could not subscribe to moves: %v", err)
+	}
+	fmt.Printf("Queue %v declared and bound!\n", Movequeue.Name)
+
 	defer conn.Close()
 	fmt.Println("Connected to RabbitMQ")
 	fmt.Println("Starting Peril server...")
 
 	gamestate := gamelogic.NewGameState(username)
+
+	pubsub.SubscribeJSON(
+		conn,
+		routing.ExchangePerilDirect,
+		"pause."+username,
+		routing.PauseKey,
+		pubsub.SimpleQueueTransient,
+		handlerPause(gamestate),
+	)
+
+	pubsub.SubscribeJSON(
+		conn,
+		routing.ExchangePerilTopic,
+		routing.ArmyMovesPrefix+"."+username,
+		"army_moves.*",
+		pubsub.SimpleQueueTransient,
+		handlerMove(gamestate),
+	)
 
 	for {
 		words := gamelogic.GetInput()
@@ -50,10 +80,15 @@ func main() {
 				fmt.Printf("unable to spawn unit: %v", err)
 			}
 		case "move":
-			_, err := gamestate.CommandMove(words)
+			MoveResult, err := gamestate.CommandMove(words)
 			if err != nil {
 				fmt.Printf("unable to move unit: %v", err)
 			}
+			err = pubsub.PublishJSON(MoveChannel, routing.ExchangePerilTopic, "army_moves."+username, MoveResult)
+			if err != nil {
+				fmt.Printf("unable to publish move: %v", err)
+			}
+			fmt.Println("Move Published")
 		case "status":
 			gamestate.CommandStatus()
 		case "help":
