@@ -68,7 +68,16 @@ func main() {
 		routing.ArmyMovesPrefix+"."+username,
 		"army_moves.*",
 		pubsub.SimpleQueueTransient,
-		handlerMove(gamestate),
+		handlerMove(MoveChannel, gamestate),
+	)
+
+	pubsub.SubscribeJSON(
+		conn,
+		routing.ExchangePerilTopic,
+		"war",
+		routing.WarRecognitionsPrefix+".#",
+		pubsub.SimpleQueueDurable,
+		handlerWar(gamestate),
 	)
 
 	for {

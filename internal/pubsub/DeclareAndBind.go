@@ -21,6 +21,10 @@ func DeclareAndBind(
 	queueType SimpleQueueType, // an enum to represent "durable" or "transient"
 ) (*amqp.Channel, amqp.Queue, error) {
 
+	deadLetters := amqp.Table{
+		"x-dead-letter-exchange": "peril_dlx",
+	}
+
 	RabChan, err := conn.Channel()
 	if err != nil {
 		return nil, amqp.Queue{}, fmt.Errorf("error creating channel: %v", err)
@@ -32,7 +36,7 @@ func DeclareAndBind(
 		queueType != SimpleQueueDurable,
 		queueType != SimpleQueueDurable,
 		false,
-		nil,
+		deadLetters,
 	)
 	if err != nil {
 		return nil, amqp.Queue{}, fmt.Errorf("error creating queue: %v", err)
