@@ -50,7 +50,11 @@ func handlerWar(gs *gamelogic.GameState) func(gamelogic.RecognitionOfWar) pubsub
 			return pubsub.NackRequeue
 		case gamelogic.WarOutcomeNoUnits:
 			return pubsub.NackDiscard
-		case gamelogic.WarOutcomeOpponentWon, gamelogic.WarOutcomeYouWon, gamelogic.WarOutcomeDraw:
+		case gamelogic.WarOutcomeOpponentWon, gamelogic.WarOutcomeYouWon:
+			//publishGob - "{winner} won a war against {loser}".
+			return pubsub.Ack
+		case gamelogic.WarOutcomeDraw:
+			//publishGob - "A war between {winner} and {loser} resulted in a draw".
 			return pubsub.Ack
 		default:
 			fmt.Println("Error Handling War")

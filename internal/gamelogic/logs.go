@@ -30,3 +30,11 @@ func WriteLog(gamelog routing.GameLog) error {
 	}
 	return nil
 }
+
+/*
+type GameLog struct {
+	CurrentTime time.Time
+	Message     string
+	Username    string
+}
+*/
