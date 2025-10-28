@@ -40,14 +40,18 @@ func main() {
 	}
 	fmt.Printf("Queue %v declared and bound!\n", queue.Name)
 
-	pubsub.SubscribeGOB(
+	err = pubsub.SubscribeGOB(
 		con,
 		routing.ExchangePerilTopic,
 		routing.GameLogSlug,
 		"game_logs.#",
 		pubsub.SimpleQueueDurable,
-		handleGameLog(), // hmmm?
+		handlerGameLog(),
 	)
+	if err != nil {
+		defer fmt.Print("> ")
+		log.Fatalf("error with SubscribeGOB: %v", err)
+	}
 
 	for {
 		input := gamelogic.GetInput()
@@ -76,9 +80,13 @@ func main() {
 	}
 }
 
-func handleGameLog() func(gamelog amqp.Queue) pubsub.Acktype {
-	return func(gamelog amqp.Queue) pubsub.Acktype {
+func handlerGameLog() func(routing.GameLog) pubsub.Acktype {
+	return func(gl routing.GameLog) pubsub.Acktype {
 		defer fmt.Print("> ")
-		return pubsub.Ack // finish here
+		if err := gamelogic.WriteLog(gl); err != nil {
+			fmt.Println("error with WriteLog, discarded from queue")
+			return pubsub.NackDiscard
+		}
+		return pubsub.Ack
 	}
 }
