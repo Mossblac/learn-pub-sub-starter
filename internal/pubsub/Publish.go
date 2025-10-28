@@ -7,7 +7,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 
+	"github.com/bootdotdev/learn-pub-sub-starter/internal/routing"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -49,4 +51,13 @@ func PublishGob[T any](ch *amqp.Channel, exchange, key string, val T) error {
 	}
 
 	return nil
+}
+
+func CreateGameLog(time time.Time, msg, Uname string) (Gl routing.GameLog) {
+	Gl = routing.GameLog{
+		CurrentTime: time,
+		Message:     msg,
+		Username:    Uname,
+	}
+	return Gl
 }

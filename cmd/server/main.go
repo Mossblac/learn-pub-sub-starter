@@ -40,6 +40,15 @@ func main() {
 	}
 	fmt.Printf("Queue %v declared and bound!\n", queue.Name)
 
+	pubsub.SubscribeGOB(
+		con,
+		routing.ExchangePerilTopic,
+		routing.GameLogSlug,
+		"game_logs.#",
+		pubsub.SimpleQueueDurable,
+		handleGameLog(), // hmmm?
+	)
+
 	for {
 		input := gamelogic.GetInput()
 		switch input[0] {
@@ -64,5 +73,12 @@ func main() {
 			fmt.Println("unknown command")
 		}
 
+	}
+}
+
+func handleGameLog() func(gamelog amqp.Queue) pubsub.Acktype {
+	return func(gamelog amqp.Queue) pubsub.Acktype {
+		defer fmt.Print("> ")
+		return pubsub.Ack // finish here
 	}
 }

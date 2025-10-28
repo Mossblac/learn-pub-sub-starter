@@ -77,7 +77,7 @@ func main() {
 		"war",
 		routing.WarRecognitionsPrefix+".#",
 		pubsub.SimpleQueueDurable,
-		handlerWar(gamestate),
+		handlerWar(MoveChannel, gamestate),
 	)
 
 	for {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
@@ -41,21 +42,33 @@ func handlerMove(MoveChannel *amqp.Channel, gs *gamelogic.GameState) func(gamelo
 	}
 }
 
-func handlerWar(gs *gamelogic.GameState) func(gamelogic.RecognitionOfWar) pubsub.Acktype {
+func handlerWar(MoveChannel *amqp.Channel, gs *gamelogic.GameState) func(gamelogic.RecognitionOfWar) pubsub.Acktype {
 	return func(rw gamelogic.RecognitionOfWar) pubsub.Acktype {
 		defer fmt.Print("> ")
-		outcome, _, _ := gs.HandleWar(rw)
+		outcome, winner, loser := gs.HandleWar(rw)
 		switch outcome {
 		case gamelogic.WarOutcomeNotInvolved:
 			return pubsub.NackRequeue
 		case gamelogic.WarOutcomeNoUnits:
 			return pubsub.NackDiscard
 		case gamelogic.WarOutcomeOpponentWon, gamelogic.WarOutcomeYouWon:
-			//publishGob - "{winner} won a war against {loser}".
-			return pubsub.Ack
+			msg := fmt.Sprintf("%v won a war against %v", winner, loser)
+			glog := pubsub.CreateGameLog(time.Now(), msg, gs.GetUsername())
+			err := pubsub.PublishGob(MoveChannel, routing.ExchangePerilTopic, routing.GameLogSlug+"."+gs.GetUsername(), glog)
+			if err != nil {
+				return pubsub.NackRequeue
+			} else {
+				return pubsub.Ack
+			}
 		case gamelogic.WarOutcomeDraw:
-			//publishGob - "A war between {winner} and {loser} resulted in a draw".
-			return pubsub.Ack
+			msg := fmt.Sprintf("A war between %v and %v resulted in a draw", winner, loser)
+			glog := pubsub.CreateGameLog(time.Now(), msg, gs.GetUsername())
+			err := pubsub.PublishGob(MoveChannel, routing.ExchangePerilTopic, routing.GameLogSlug+"."+gs.GetUsername(), glog)
+			if err != nil {
+				return pubsub.NackRequeue
+			} else {
+				return pubsub.Ack
+			}
 		default:
 			fmt.Println("Error Handling War")
 			return pubsub.NackDiscard
