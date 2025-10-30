@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
+	"strconv"
+	"time"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
@@ -103,7 +105,19 @@ func main() {
 		case "help":
 			gamelogic.PrintClientHelp()
 		case "spam":
-			fmt.Println("Spamming not allowed yet")
+			if len(words) < 2 {
+				fmt.Println("spam requires an integer input")
+			} else {
+				spamAmount, err := strconv.Atoi(words[1])
+				if err != nil {
+					fmt.Printf("spam value must be an integer: %v", err)
+				}
+				for range spamAmount {
+					evilOG := gamelogic.GetMaliciousLog()
+					spamLog := pubsub.CreateGameLog(time.Now(), evilOG, username)
+					pubsub.PublishGob(MoveChannel, routing.ExchangePerilTopic, "game_logs."+username, spamLog)
+				}
+			}
 		case "quit":
 			gamelogic.PrintQuit()
 			fmt.Printf("\nShutting Down RabbitMQ connection\n Ending Program...\n")

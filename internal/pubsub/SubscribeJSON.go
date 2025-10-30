@@ -26,6 +26,9 @@ func SubscribeJSON[T any](
 	if err != nil {
 		return err
 	}
+
+	channel.Qos(10, 0, false)
+
 	sig, err := channel.Consume(Aqueue.Name, "", false, false, false, false, nil)
 	if err != nil {
 		return err

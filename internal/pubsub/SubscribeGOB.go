@@ -3,6 +3,7 @@ package pubsub
 import (
 	"bytes"
 	"encoding/gob"
+	"fmt"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -19,6 +20,8 @@ func SubscribeGOB[T any](
 	if err != nil {
 		return err
 	}
+	channel.Qos(10, 0, false)
+
 	sig, err := channel.Consume(Aqueue.Name, "", false, false, false, false, nil)
 	if err != nil {
 		return err
@@ -30,24 +33,26 @@ func SubscribeGOB[T any](
 			var g T
 			err := dec.Decode(&g)
 			if err != nil {
-				return err
+				message.Nack(false, true)
+				fmt.Printf("error decoding %v", err)
+				continue
 			}
 			ack := handler(g)
 			switch ack {
 			case Ack:
 				err = message.Ack(false)
 				if err != nil {
-					return err
+					fmt.Printf("error Ack %v", err)
 				}
 			case NackRequeue:
 				err = message.Nack(false, true)
 				if err != nil {
-					return err
+					fmt.Printf("error Nack %v", err)
 				}
 			case NackDiscard:
 				err = message.Nack(false, false)
 				if err != nil {
-					return err
+					fmt.Printf("error Nack %v", err)
 				}
 			}
 		}

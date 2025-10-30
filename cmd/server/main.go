@@ -55,28 +55,32 @@ func main() {
 
 	for {
 		input := gamelogic.GetInput()
-		switch input[0] {
-		case "pause":
-			fmt.Println("sending pause message")
-			err = pubsub.PublishJSON(RabChan, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{IsPaused: true})
-			if err != nil {
-				fmt.Printf("Error with PublishJSON: %v", err)
-			}
-		case "resume":
-			fmt.Println("sending resume message")
-			err = pubsub.PublishJSON(RabChan, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{IsPaused: false})
-			if err != nil {
-				fmt.Printf("Error with PublishJSON: %v", err)
-			}
-		case "quit":
+		if len(input) == 0 {
+			fmt.Println("no input")
+		} else {
+			switch input[0] {
+			case "pause":
+				fmt.Println("sending pause message")
+				err = pubsub.PublishJSON(RabChan, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{IsPaused: true})
+				if err != nil {
+					fmt.Printf("Error with PublishJSON: %v", err)
+				}
+			case "resume":
+				fmt.Println("sending resume message")
+				err = pubsub.PublishJSON(RabChan, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{IsPaused: false})
+				if err != nil {
+					fmt.Printf("Error with PublishJSON: %v", err)
+				}
+			case "quit":
 
-			fmt.Printf("\nShutting Down RabbitMQ connection\n Ending Program...\n")
-			con.Close()
-			return
-		default:
-			fmt.Println("unknown command")
+				fmt.Printf("\nShutting Down RabbitMQ connection\n Ending Program...\n")
+				con.Close()
+				return
+			default:
+				fmt.Println("unknown command")
+			}
+
 		}
-
 	}
 }
 
